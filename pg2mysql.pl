@@ -6,7 +6,11 @@ use strict;
 use Getopt::Long;
 
 my @skip_tables;
-GetOptions ("skip=s" => \@skip_tables);
+my $insert_ignore;
+GetOptions (
+    "skip=s" => \@skip_tables,
+    "insert_ignore" => \$insert_ignore,
+    );
 
 $| = 1;
 
@@ -22,7 +26,7 @@ print "create database public;\n";
 my $in_create = 0;
 my $in_alter = 0;
 my $in_insert = 0;
-my $skip_table = 0;
+my $skip = 0;
 my $debug = 0;
 my @deferred_ai_statements;
 
@@ -35,7 +39,6 @@ while (<>) {
         
     chomp;
     $nextline = $_;
-    next unless $line;
 
     handle_line($line, $nextline);
 }
@@ -54,21 +57,21 @@ sub handle_line {
     my $nextline = shift;
 
     if ( $in_create || $line =~ m/^\s*CREATE TABLE/ ) {
-        ($line, $in_create, $skip_table) = handle_create($line);
+        ($line, $in_create, $skip) = handle_create($line);
         debug_print("outside of create, in_create = $in_create\n");
     } elsif ( $in_alter || $line =~ m/^\s*ALTER TABLE/ ) {
-        ($line, $in_alter, $skip_table) = handle_alter($line, $nextline);
+        ($line, $in_alter, $skip) = handle_alter($line, $nextline);
         debug_print("outside of alter, in_alter = $in_alter\n");
     } elsif ( $in_insert || $line =~ m/^\s*INSERT INTO/ ) {
-        ($line, $in_insert, $skip_table) = handle_insert($line);
+        ($line, $in_insert, $skip) = handle_insert($line, $nextline);
     } elsif ( $line =~ m/^\s*CREATE INDEX/ ) {
-        ($line, $skip_table) = handle_create_index($line);
+        ($line, $skip) = handle_create_index($line);
     } else {
         print_warning("$line");
         return;
     }
 
-    print "$line\n" if ( $line && !$skip_table );
+    print "$line\n" unless $skip;
 }
 
 sub handle_create {
@@ -77,9 +80,9 @@ sub handle_create {
     if ( $line =~ m/^\s*CREATE TABLE (\S+)/ ) {
         if ( grep { $1 eq $_ } @skip_tables ) {
             print_warning("skipping table $1");
-            $skip_table = 1;
+            $skip = 1;
         } else {
-            $skip_table = 0;
+            $skip = 0;
         }
     }
     
@@ -122,8 +125,8 @@ sub handle_create {
     $line =~ s/ DEFAULT \('([0-9]*)'::smallint[^ ,]*/ DEFAULT $1/;
     $line =~ s/ DEFAULT \('([0-9]*)'::bigint[^ ,]*/ DEFAULT $1/;
     $line =~ s/ DEFAULT nextval\(.*\) / auto_increment/; # doesn't seem to be used in most dumps, only in ALTER TABLE
-    $line =~ s/::.*,/,/; # strip type cast info
-    $line =~ s/::[^,]*$/,/; # strip type cast info
+    $line =~ s/::.*,/,/; # strip extra type info
+    $line =~ s/::[^,]*$/,/; # strip extra type info
     $line =~ s/ timestamp with time zone/ timestamp/;
     $line =~ s/ timestamp without time zone/ timestamp/;
     $line =~ s/ timestamp DEFAULT '(.*)(\+|\-).*'/ timestamp DEFAULT '%1'/; # strip timezone in defaults
@@ -131,6 +134,9 @@ sub handle_create {
     $line =~ s/ timestamp( NOT NULL)?(,|$)/ timestamp DEFAULT 0${1}${2}/;
     $line =~ s/ DEFAULT .*\(\)//; # strip function defaults
     $line =~ s/ longtext DEFAULT [^,]*/ longtext,/; # text types can't have defaults in mysql
+
+    # extension types, usually prefixed with the name of a schema
+    $line =~ s/ \S*\.citext/ text/;
 
     my $field_def = ( $line !~ m/^CREATE/ && $line !~ m/^\s*CONSTRAINT/ && $line !~ m/\s*PRIMARY KEY/ && $line !~ m/^\s*\);/ );
     
@@ -149,23 +155,27 @@ sub handle_create {
 
     debug_print("in create, cont = $statement_continues\n");
     
-    return ($line, $statement_continues, $skip_table);
+    return ($line, $statement_continues, $skip);
 }
 
 sub handle_alter {
     my $line = shift;
     my $nextline = shift;
 
+    if ( $line =~ m/ALTER TABLE .* OWNER TO/ ) {
+        return ($line, 0, 1);
+    }
+    
     $line =~ s/ALTER TABLE ONLY/ALTER TABLE/;
     $line =~ s/DEFERRABLE INITIALLY DEFERRED//;
-    $line =~ s/USING btree.*;/;/;
+    $line =~ s/USING \S+;/;/;
 
     if ( $line =~ m/^\s*ALTER TABLE (\S+)/ ) {
         if ( grep { $1 eq $_ } @skip_tables ) {
             print_warning("skipping table $1");
-            $skip_table = 1;
+            $skip = 1;
         } else {
-            $skip_table = 0;
+            $skip = 0;
         }
     }
 
@@ -173,7 +183,7 @@ sub handle_alter {
     if ( $nextline =~ m/\s*ADD CONSTRAINT .*? FOREIGN KEY .*? REFERENCES ([^\(]+)/ ) {
         if ( grep { $1 eq $_ } @skip_tables ) {
             print_warning("skipping foreign key on skipped table $1");
-            $skip_table = 1;
+            $skip = 1;
         }
     }
     
@@ -187,9 +197,9 @@ sub handle_alter {
     }
     
     my $statement_continues = 1;
-    if ( $line =~ m/\);$/ ) {
+    if ( $line =~ m/\;$/ ) {
         $statement_continues = 0;
-    } elsif ( $line =~ m/FOREIGN KEY.*\)\s*;$/ ) { # foreign key alters add a space before the semicolon
+    } elsif ( $line =~ m/FOREIGN KEY.*\s*;$/ ) { # foreign key alters add a space before the semicolon
         $statement_continues = 0;
     }
 
@@ -216,32 +226,64 @@ sub handle_alter {
         }
     }
     
-    return ($line, $statement_continues, $skip_table);
+    return ($line, $statement_continues, $skip);
 }
 
 sub handle_insert {
     my $line = shift;
-
+    my $nextline = shift;
+    
     if ( $line =~ m/^\s*INSERT INTO (\S+)/ ) {
         if ( grep { $1 eq $_ } @skip_tables ) {
             print_warning("skipping table $1");
-            $skip_table = 1;
+            $skip = 1;
         } else {
-            $skip_table = 0;
+            $skip = 0;
+        }
+
+        # Escape any field names, some of which will not parse in MySQL (e.g. `key`)
+
+        $line =~ /^\s*INSERT INTO (\S+)\s*\(([^\)]+)\)/;
+        my @fields = split /\s*,\s*/, $2;
+        my $escaped = join(',', map { backtick($_) } @fields);
+        
+        $line =~ s/^\s*INSERT INTO (\S+)\s*\(([^\)]+)\)/INSERT INTO $1 \($escaped\)/;
+
+        if ( $insert_ignore ) {
+            $line =~ s/^\s*INSERT INTO /INSERT IGNORE INTO /;
         }
     }
     
     # 2020-06-08 11:27:31.597687-07
     $line =~ s/'(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}.\d{6})(-|\+)\d{2}'/'$1'/g; # timestamp literal strings need timezones stripped
     $line =~ s/\\([nt])/\\\\$1/g; # tab and newline literals, need an additional escape (for JSON strings)
+
+    # Count single quotes
+    my $quotes = () = $line =~ m/'/g;
+    
+    # Escaped quote characters, this is an odd feature of pgdump.
+    # An escaped single quote escapes, so does '', but if you use both (\'') they cancel each other out.
+    # Same thing is true in JSON strings (double quoted).
+    # No idea why pgdump behaves this way, seems like a bug.
+    $line =~ s/\\''/\\\\''/g; 
     $line =~ s/\\"/\\\\"/g; # escaped double quote characters
 
     my $statement_continues = 1;
     if ( $line =~ m/\);$/ ) {
-        $statement_continues = 0;
+        # the above is a reasonable heurisitic for a line not
+        # continuing but isn't fool proof, and can fail on long text
+        # lines that end in );. To do slightly better, we also keep
+        # track of how many single quotes we've seen
+
+        warn "line $. ended, num quotes is $quotes and in_insert is $in_insert\n";
+        if ( (!$in_insert && $quotes % 2 == 0)
+             || ($in_insert && $quotes % 2 == 1) ) {
+            warn "marking statement ended";
+            $statement_continues = 0;
+        }
     }
     
-    return ($line, $statement_continues, $skip_table);
+    return ($line, $statement_continues, $skip);
 }
 
 sub handle_create_index {
@@ -262,6 +304,11 @@ sub handle_create_index {
     return ($line, 0);
 }
 
+sub backtick {
+    my $s = shift;
+    return '`' . $s . '`';
+}
+    
 sub ids {
     my $s = shift;
     $s =~ s/"/`/g;
