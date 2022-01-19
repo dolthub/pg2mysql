@@ -92,10 +92,8 @@ sub handle_line {
 
     if ( $in_create || $line =~ m/^\s*CREATE TABLE/ ) {
         ($line, $in_create, $skip) = handle_create($line);
-        debug_print("outside of create, in_create = $in_create\n");
     } elsif ( $in_alter || $line =~ m/^\s*ALTER TABLE/ ) {
         ($line, $in_alter, $skip) = handle_alter($line, $nextline);
-        debug_print("outside of alter, in_alter = $in_alter\n");
     } elsif ( $in_insert || $line =~ m/^\s*INSERT INTO/ ) {
         ($line, $in_insert, $skip) = handle_insert($line, $nextline);
     } elsif ( $line =~ m/^\s*CREATE INDEX/ ) {
@@ -141,7 +139,6 @@ sub handle_create {
     # Some types can't be supported so are just left alone to fail in
     # mysql, including: tsvector
     
-    $line =~ s/"/`/g;
     $line =~ s/"/`/g;
     $line =~ s/ int_unsigned/ integer UNSIGNED/;
     $line =~ s/ smallint_unsigned/ smallint UNSIGNED/;
