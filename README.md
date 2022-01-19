@@ -7,8 +7,8 @@ statements.
 Usage:
 
 ```
-./pg2mysql < file.pgdump > mysql.sql
-./pg2mysql --skip table1 --skip table2 --insert_ignore < file.pgdump > mysql.sql 2>warnings.txt
+./pg2mysql.pl < file.pgdump > mysql.sql
+./pg2mysql.pl --skip table1 --skip table2 --insert_ignore < file.pgdump > mysql.sql 2>warnings.txt
 ```
 
 It handles:
