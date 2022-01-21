@@ -87,7 +87,7 @@ foreach my $deferred ( @deferred_ai_statements ) {
 }
 
 sub handle_line {
-    my $line = shift;
+    my $line = shift || "";
     my $nextline = shift;
 
     if ( $in_create || $line =~ m/^\s*CREATE TABLE/ ) {
@@ -174,7 +174,7 @@ sub handle_create {
     $line =~ s/ timestamp DEFAULT now()/ timestamp DEFAULT CURRENT_TIMESTAMP/;
     $line =~ s/ timestamp( NOT NULL)?(,|$)/ timestamp DEFAULT 0${1}${2}/;
     $line =~ s/ DEFAULT .*\(\)//; # strip function defaults
-    $line =~ s/ longtext DEFAULT [^,]*/ longtext,/; # text types can't have defaults in mysql
+    $line =~ s/ longtext DEFAULT [^,]* (NOT NULL)?/ longtext $1/; # text types can't have defaults in mysql
 
     # extension types, usually prefixed with the name of a schema
     $line =~ s/ \S*\.citext/ text/;
