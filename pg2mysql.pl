@@ -56,11 +56,14 @@ print "--\n";
 print "set autocommit = off;\n";
 print "set foreign_key_checks = off;\n";
 
-my $in_create = 0;
-my $in_alter = 0;
-my $in_insert = 0;
-my $skip = 0;
-my $debug = 0;
+my $in_begin_end = 0;
+
+my $in_create    = 0;
+my $in_alter     = 0;
+my $in_insert    = 0;
+
+my $skip         = 0;
+my $debug        = 0;
 my %dbs;
 my @deferred_ai_statements;
 
@@ -90,7 +93,10 @@ sub handle_line {
     my $line = shift || "";
     my $nextline = shift;
 
-    if ( $in_create || $line =~ m/^\s*CREATE TABLE/ ) {
+    # Explicitly skipped statments need to be defined first.
+    if ( $in_begin_end || $line =~ m/\s*begin/) {
+	($line, $in_begin_end, $skip) = handle_begin_end($line);
+    } elsif ( $in_create || $line =~ m/^\s*CREATE TABLE/ ) {
         ($line, $in_create, $skip) = handle_create($line);
     } elsif ( $in_alter || $line =~ m/^\s*ALTER TABLE/ ) {
         ($line, $in_alter, $skip) = handle_alter($line, $nextline);
@@ -343,6 +349,21 @@ sub handle_create_index {
 
     # TODO: backtick column names in index
     return ($line, 0);
+}
+
+sub handle_begin_end {
+    my $line     = shift;
+    my $in_begin = shift;
+    my $skip     = shift;
+
+    # Ignore everything in these blocks. The parser can get confused if there are INSERT statements in the functions.
+    $in_begin = 1;
+    $skip = 1;
+    if ( $line =~ /\s*end.*;/ ) {
+	$in_begin = 0;
+    }
+
+    return ($line, $in_begin, $skip);
 }
 
 sub backtick {
