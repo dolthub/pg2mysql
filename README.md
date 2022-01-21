@@ -39,6 +39,10 @@ about:
 * Will convert a character varying type to longtext if no length is
   specified, which means MySQL won't be able to make it a key
 
+# Requirements
+
+You must have Perl installed at `/usr/bin/perl` to run the script directly.
+
 # Credits
 
 pg2mysql is heavily inspired and informed by this project of the same
