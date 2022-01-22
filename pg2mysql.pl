@@ -95,7 +95,7 @@ sub handle_line {
 
     # Explicitly skipped statments need to be defined first.
     if ( $in_begin_end || $line =~ m/\s*begin/) {
-	($line, $in_begin_end, $skip) = handle_begin_end($line);
+        ($line, $in_begin_end, $skip) = handle_begin_end($line);
     } elsif ( $in_create || $line =~ m/^\s*CREATE TABLE/ ) {
         ($line, $in_create, $skip) = handle_create($line);
     } elsif ( $in_alter || $line =~ m/^\s*ALTER TABLE/ ) {
@@ -136,6 +136,10 @@ sub handle_create {
     
     debug_print("input line is $line\n");
 
+    if ( $line =~ m/\s*CONSTRAINT .*? CHECK/ ) {
+        $line = handle_check($line);
+    }
+    
     # Some notes on these conversions:
     # 
     # Array types are not supported in mysql, but for arrays of
@@ -173,14 +177,14 @@ sub handle_create {
     $line =~ s/ DEFAULT \('([0-9]*)'::bigint[^ ,]*/ DEFAULT $1/;
     $line =~ s/ DEFAULT nextval\(.*\) / auto_increment/; # doesn't seem to be used in most dumps, only in ALTER TABLE
     $line =~ s/::.*,/,/; # strip extra type info
-    $line =~ s/::[^,]*$/,/; # strip extra type info
+    $line =~ s/::[^,]*$//; # strip extra type info
     $line =~ s/ timestamp with time zone/ timestamp/;
     $line =~ s/ timestamp without time zone/ timestamp/;
     $line =~ s/ timestamp DEFAULT '(.*)(\+|\-).*'/ timestamp DEFAULT '%1'/; # strip timezone in defaults
     $line =~ s/ timestamp DEFAULT now()/ timestamp DEFAULT CURRENT_TIMESTAMP/;
     $line =~ s/ timestamp( NOT NULL)?(,|$)/ timestamp DEFAULT 0${1}${2}/;
     $line =~ s/ DEFAULT .*\(\)//; # strip function defaults
-    $line =~ s/ longtext DEFAULT [^,]* (NOT NULL)?/ longtext $1/; # text types can't have defaults in mysql
+    $line =~ s/ longtext DEFAULT [^,]*( NOT NULL)?/ longtext $1/; # text types can't have defaults in mysql
 
     # extension types, usually prefixed with the name of a schema
     $line =~ s/ \S*\.citext/ text/;
@@ -203,6 +207,28 @@ sub handle_create {
     debug_print("in create, cont = $statement_continues\n");
     
     return ($line, $statement_continues, $skip);
+}
+
+sub handle_check {
+    my $line = shift;
+
+    # For check constraints, we can do a couple useful things:
+    # 1) Strip off type conversions, which won't parse
+    # 2) Convert ANY syntax into IN syntax (common check constraint in pg)
+
+    # First strip off type conversions, which can be parenthesized.
+    while ( $line =~ s/\(([^\)]+)\)::[\w ]+/$1/g ) {}
+    while ( $line =~ s/(\(([^\)]+))\)::[\w ]+/$1/g ) {}
+    $line =~ s/::[\w ]+//g;
+
+    # Then translate an ANY check into an IN check
+    $line =~ s/= ANY \((ARRAY\[(.*?)\]\))/= ANY $1/;
+    $line =~ s/= ANY ARRAY\[(.*?)\]/ IN ($1)/;
+
+    # We may end up with one extra set of parentheses here, remove them if so
+    $line =~ s/ IN \(\((.*?)\)\)/ IN ($1)/;
+    
+    return $line;
 }
 
 sub handle_alter {
@@ -360,7 +386,7 @@ sub handle_begin_end {
     $in_begin = 1;
     $skip = 1;
     if ( $line =~ /\s*end.*;/ ) {
-	$in_begin = 0;
+        $in_begin = 0;
     }
 
     return ($line, $in_begin, $skip);
