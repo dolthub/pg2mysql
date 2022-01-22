@@ -138,6 +138,7 @@ sub handle_create {
 
     if ( $line =~ m/\s*CONSTRAINT .*? CHECK/ ) {
         $line = handle_check($line);
+        return ($line, 1, 0);
     }
     
     # Some notes on these conversions:
