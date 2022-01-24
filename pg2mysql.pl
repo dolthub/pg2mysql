@@ -150,7 +150,6 @@ sub handle_create {
     # Some types can't be supported so are just left alone to fail in
     # mysql, including: tsvector
     
-    $line =~ s/"/`/g;
     $line =~ s/ int_unsigned/ integer UNSIGNED/;
     $line =~ s/ smallint_unsigned/ smallint UNSIGNED/;
     $line =~ s/ bigint_unsigned/ bigint UNSIGNED/;
@@ -176,7 +175,11 @@ sub handle_create {
     $line =~ s/ DEFAULT \('([0-9]*)'::int[^ ,]*/ DEFAULT $1/;
     $line =~ s/ DEFAULT \('([0-9]*)'::smallint[^ ,]*/ DEFAULT $1/;
     $line =~ s/ DEFAULT \('([0-9]*)'::bigint[^ ,]*/ DEFAULT $1/;
-    $line =~ s/ DEFAULT nextval\(.*\) / auto_increment/; # doesn't seem to be used in most dumps, only in ALTER TABLE
+    # strip off sequence defaults, can't be converted to
+    # auto_increment here (only via ALTER TABLE statement). Not clear
+    # what pg_dump setting does it this way instead of after the data
+    # section.
+    $line =~ s/ DEFAULT nextval\(.*\)/ /; 
     $line =~ s/::.*,/,/; # strip extra type info
     $line =~ s/::[^,]*$//; # strip extra type info
     $line =~ s/ timestamp with time zone/ timestamp/;
@@ -184,8 +187,10 @@ sub handle_create {
     $line =~ s/ timestamp DEFAULT '(.*)(\+|\-).*'/ timestamp DEFAULT '%1'/; # strip timezone in defaults
     $line =~ s/ timestamp DEFAULT now()/ timestamp DEFAULT CURRENT_TIMESTAMP/;
     $line =~ s/ timestamp( NOT NULL)?(,|$)/ timestamp DEFAULT 0${1}${2}/;
-    $line =~ s/ DEFAULT .*\(\)//; # strip function defaults
     $line =~ s/ longtext DEFAULT [^,]*( NOT NULL)?/ longtext $1/; # text types can't have defaults in mysql
+    $line =~ s/ DEFAULT .*\(\)//; # strip function defaults
+    # lots of these function translations are missing
+    $line =~ s/ DEFAULT json_build_object\((.*)\)/ DEFAULT json_object($1)/;
 
     # extension types, usually prefixed with the name of a schema
     $line =~ s/ \S*\.citext/ text/;
