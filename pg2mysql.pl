@@ -228,6 +228,16 @@ sub handle_check {
 
     # We may end up with one extra set of parentheses here, remove them if so
     $line =~ s/ IN \(\((.*?)\)\)/ IN ($1)/;
+
+    # Final sanity check: make sure that there isn't an extra right
+    # paren (can happen due to perl's regex matching rules from
+    # regexes above)
+    my $left_parens = () = $line =~ m/\(/g;
+    my $right_parens = () = $line =~ m/\)/g;
+    while ( $right_parens > $left_parens ) {
+        $line =~ s/\)(,)?\s*$/$1/;
+        $right_parens -= 1;
+    }
     
     return $line;
 }
