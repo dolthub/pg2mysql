@@ -150,7 +150,6 @@ sub handle_create {
     # Some types can't be supported so are just left alone to fail in
     # mysql, including: tsvector
     
-    $line =~ s/"/`/g;
     $line =~ s/ int_unsigned/ integer UNSIGNED/;
     $line =~ s/ smallint_unsigned/ smallint UNSIGNED/;
     $line =~ s/ bigint_unsigned/ bigint UNSIGNED/;
@@ -176,7 +175,11 @@ sub handle_create {
     $line =~ s/ DEFAULT \('([0-9]*)'::int[^ ,]*/ DEFAULT $1/;
     $line =~ s/ DEFAULT \('([0-9]*)'::smallint[^ ,]*/ DEFAULT $1/;
     $line =~ s/ DEFAULT \('([0-9]*)'::bigint[^ ,]*/ DEFAULT $1/;
-    $line =~ s/ DEFAULT nextval\(.*\) / auto_increment/; # doesn't seem to be used in most dumps, only in ALTER TABLE
+    # strip off sequence defaults, can't be converted to
+    # auto_increment here (only via ALTER TABLE statement). Not clear
+    # what pg_dump setting does it this way instead of after the data
+    # section.
+    $line =~ s/ DEFAULT nextval\(.*\)/ /; 
     $line =~ s/::.*,/,/; # strip extra type info
     $line =~ s/::[^,]*$//; # strip extra type info
     $line =~ s/ timestamp with time zone/ timestamp/;
@@ -184,8 +187,10 @@ sub handle_create {
     $line =~ s/ timestamp DEFAULT '(.*)(\+|\-).*'/ timestamp DEFAULT '%1'/; # strip timezone in defaults
     $line =~ s/ timestamp DEFAULT now()/ timestamp DEFAULT CURRENT_TIMESTAMP/;
     $line =~ s/ timestamp( NOT NULL)?(,|$)/ timestamp DEFAULT 0${1}${2}/;
-    $line =~ s/ DEFAULT .*\(\)//; # strip function defaults
     $line =~ s/ longtext DEFAULT [^,]*( NOT NULL)?/ longtext $1/; # text types can't have defaults in mysql
+    $line =~ s/ DEFAULT .*\(\)//; # strip function defaults
+    # lots of these function translations are missing
+    $line =~ s/ DEFAULT json_build_object\((.*)\)/ DEFAULT json_object($1)/;
 
     # extension types, usually prefixed with the name of a schema
     $line =~ s/ \S*\.citext/ text/;
@@ -228,6 +233,16 @@ sub handle_check {
 
     # We may end up with one extra set of parentheses here, remove them if so
     $line =~ s/ IN \(\((.*?)\)\)/ IN ($1)/;
+
+    # Final sanity check: make sure that there isn't an extra right
+    # paren (can happen due to perl's regex matching rules from
+    # regexes above)
+    my $left_parens = () = $line =~ m/\(/g;
+    my $right_parens = () = $line =~ m/\)/g;
+    while ( $right_parens > $left_parens ) {
+        $line =~ s/\)(,)?\s*$/$1/;
+        $right_parens -= 1;
+    }
     
     return $line;
 }
@@ -262,12 +277,20 @@ sub handle_alter {
     }
     
     debug_print("alter line is $line\n");
-    
-    if ( $line =~ m/ADD CONSTRAINT (\S+) UNIQUE \(([^\)]*)\);/ ) {
+
+    # Escape field names in unique and primary key constraints
+    if ( $line =~ m/^\s*ADD CONSTRAINT (\S+) UNIQUE \(([^\)]*)\);/ ) {
         my @cols = split /\s*,\s*/, $2;
         my @quoted = map { "`$_`" } @cols;
         my $joined = join ",", @quoted;
         $line = "ADD CONSTRAINT $1 UNIQUE ($joined);";
+    }
+
+    if ( $line =~ m/^\s*ADD CONSTRAINT (\S+) PRIMARY KEY \(([^\)]*)\);/ ) {
+        my @cols = split /\s*,\s*/, $2;
+        my @quoted = map { "`$_`" } @cols;
+        my $joined = join ",", @quoted;
+        $line = "ADD CONSTRAINT $1 PRIMARY KEY ($joined);";
     }
     
     my $statement_continues = 1;
