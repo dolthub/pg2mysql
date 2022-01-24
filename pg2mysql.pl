@@ -277,12 +277,20 @@ sub handle_alter {
     }
     
     debug_print("alter line is $line\n");
-    
-    if ( $line =~ m/ADD CONSTRAINT (\S+) UNIQUE \(([^\)]*)\);/ ) {
+
+    # Escape field names in unique and primary key constraints
+    if ( $line =~ m/^\s*ADD CONSTRAINT (\S+) UNIQUE \(([^\)]*)\);/ ) {
         my @cols = split /\s*,\s*/, $2;
         my @quoted = map { "`$_`" } @cols;
         my $joined = join ",", @quoted;
         $line = "ADD CONSTRAINT $1 UNIQUE ($joined);";
+    }
+
+    if ( $line =~ m/^\s*ADD CONSTRAINT (\S+) PRIMARY KEY \(([^\)]*)\);/ ) {
+        my @cols = split /\s*,\s*/, $2;
+        my @quoted = map { "`$_`" } @cols;
+        my $joined = join ",", @quoted;
+        $line = "ADD CONSTRAINT $1 PRIMARY KEY ($joined);";
     }
     
     my $statement_continues = 1;
