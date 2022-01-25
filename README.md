@@ -2,7 +2,7 @@
 
 pg2mysql transforms a pgdump file on STDIN into a MySQL dump file on
 STDOUT. Dump format must be `INSERT` statements, not binary or `COPY`
-statements.
+statements (ie. `pg_dump --insert <dbname>`).
 
 Usage:
 
