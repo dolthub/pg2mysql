@@ -413,4 +413,10 @@ ALTER TABLE ONLY public.text_types
 PGDUMP
 
     dolt sql < out.sql
+
+    run dolt sql -q "use public; show create table text_types;"
+    [ $status -eq 0 ]
+    [[ "$output" =~ "longtext" ]] || false
+    [[ "$output" =~ "char(1)" ]] || false
+    [[ "$output" =~ "varchar(1)" ]] || false
 }
