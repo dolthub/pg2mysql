@@ -354,3 +354,64 @@ PGDUMP
     dolt sql < out.sql
 
 }
+
+@test "Text types: text, char(1), varchar(1)" {
+    pg2mysql.pl <<PGDUMP > out.sql
+--
+-- PostgreSQL database dump
+--
+
+-- Dumped from database version 14.1
+-- Dumped by pg_dump version 14.1
+
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+SET check_function_bodies = false;
+SET xmloption = content;
+SET client_min_messages = warning;
+SET row_security = off;
+
+SET default_tablespace = '';
+
+SET default_table_access_method = heap;
+
+--
+-- Name: text_types; Type: TABLE; Schema: public; Owner: timsehn
+--
+
+CREATE TABLE public.text_types (
+    pk integer NOT NULL,
+    c1 text,
+    c2 character(1),
+    c3 character varying(1)
+);
+
+
+ALTER TABLE public.text_types OWNER TO timsehn;
+
+--
+-- Data for Name: text_types; Type: TABLE DATA; Schema: public; Owner: timsehn
+--
+
+
+
+--
+-- Name: text_types text_types_pkey; Type: CONSTRAINT; Schema: public; Owner: timsehn
+--
+
+ALTER TABLE ONLY public.text_types
+    ADD CONSTRAINT text_types_pkey PRIMARY KEY (pk);
+
+
+--
+-- PostgreSQL database dump complete
+--
+PGDUMP
+
+    skip "Bug in char(1) conversion, makes it longtext(1)"
+    dolt sql < out.sql
+}
