@@ -412,6 +412,5 @@ ALTER TABLE ONLY public.text_types
 --
 PGDUMP
 
-    skip "Bug in char(1) conversion, makes it longtext(1)"
     dolt sql < out.sql
 }
