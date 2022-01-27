@@ -169,7 +169,7 @@ sub handle_create {
     $line =~ s/ character\[\]/ longtext/;
     $line =~ s/ character varying\(([0-9]*)\)/ varchar($1)/;
     $line =~ s/ character varying/ longtext/;
-    $line =~ s/ character \(([0-9]*)\)/ char($1)/;
+    $line =~ s/ character\s*\(([0-9]*)\)/ char($1)/;
     $line =~ s/ character/ longtext/;
     $line =~ s/ DEFAULT \('([0-9]*)'::int[^ ,]*/ DEFAULT $1/;
     $line =~ s/ DEFAULT \('([0-9]*)'::smallint[^ ,]*/ DEFAULT $1/;
