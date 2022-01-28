@@ -492,3 +492,66 @@ PGDUMP
     [[ "$output" =~ "time(1)" ]] || false
     [[ "$output" =~ "date" ]] || false
 }
+
+@test "JSON types: json, jsonb" {
+    pg2mysql.pl <<PGDUMP > out.sql 
+
+--
+-- PostgreSQL database dump
+--
+
+-- Dumped from database version 14.1
+-- Dumped by pg_dump version 14.1
+
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+SET check_function_bodies = false;
+SET xmloption = content;
+SET client_min_messages = warning;
+SET row_security = off;
+
+SET default_tablespace = '';
+
+SET default_table_access_method = heap;
+
+--
+-- Name: json_types; Type: TABLE; Schema: public; Owner: timsehn
+--
+
+CREATE TABLE public.json_types (
+    pk integer NOT NULL,
+    c1 json,
+    c2 jsonb
+);
+ALTER TABLE public.json_types OWNER TO timsehn;
+
+--
+-- Data for Name: json_types; Type: TABLE DATA; Schema: public; Owner: timsehn
+--
+
+
+
+--
+-- Name: json_types json_types_pkey; Type: CONSTRAINT; Schema: public; Owner: timsehn
+--
+
+ALTER TABLE ONLY public.json_types
+    ADD CONSTRAINT json_types_pkey PRIMARY KEY (pk);
+
+
+--
+-- PostgreSQL database dump complete
+--
+PGDUMP
+
+    dolt sql < out.sql
+
+    run dolt sql -q "use public; show create table json_types;"
+    [ $status -eq 0 ]
+    [[ "$output" =~ "json" ]] || false
+    [[ ! "$output" =~ "jsonb" ]] || false
+}
