@@ -408,7 +408,7 @@ sub handle_begin_end {
     # Ignore everything in these blocks. The parser can get confused if there are INSERT statements in the functions.
     $in_begin = 1;
     $skip = 1;
-    if ( $line =~ /^\s*end.*;$/ ) {
+    if ( $line =~ /^\s*end.*;?\s*$/i ) {
         $in_begin = 0;
     }
 

@@ -30,6 +30,9 @@ create table end(c1 int);
 begin
 this is garbage
 end bla;
+BEGIN
+garbage again
+END
 PGDUMP
 
      [ $status -eq 0 ]
