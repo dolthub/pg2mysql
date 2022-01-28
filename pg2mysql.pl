@@ -93,7 +93,7 @@ sub handle_line {
     my $nextline = shift;
 
     # Explicitly skipped statments need to be defined first.
-    if ( $in_begin_end || $line =~ m/\s*begin/) {
+    if ( $in_begin_end || $line =~ m/^\s*begin\s*$/i) {
         ($line, $in_begin_end, $skip) = handle_begin_end($line);
     } elsif ( $in_create || $line =~ m/^\s*CREATE TABLE/ ) {
         ($line, $in_create, $skip) = handle_create($line);
@@ -328,7 +328,7 @@ sub handle_alter {
 sub handle_insert {
     my $line = shift;
     my $nextline = shift;
-    
+
     if ( $line =~ m/^\s*INSERT INTO (\S+)/ ) {
         if ( grep { $1 eq $_ } @skip_tables ) {
             print_warning("skipping table $1");
@@ -349,7 +349,7 @@ sub handle_insert {
             $line =~ s/^\s*INSERT INTO /INSERT IGNORE INTO /;
         }
     }
-    
+
     # 2020-06-08 11:27:31.597687-07
     $line =~ s/'(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}.\d{6})(-|\+)\d{2}'/'$1'/g; # timestamp literal strings need timezones stripped
     $line =~ s/\\([nt])/\\\\$1/g; # tab and newline literals, need an additional escape (for JSON strings)
@@ -378,7 +378,7 @@ sub handle_insert {
             $statement_continues = 0;
         }
     }
-    
+
     return ($line, $statement_continues, $skip);
 }
 
@@ -408,7 +408,7 @@ sub handle_begin_end {
     # Ignore everything in these blocks. The parser can get confused if there are INSERT statements in the functions.
     $in_begin = 1;
     $skip = 1;
-    if ( $line =~ /\s*end.*;/ ) {
+    if ( $line =~ /^\s*end.*;$/ ) {
         $in_begin = 0;
     }
 
