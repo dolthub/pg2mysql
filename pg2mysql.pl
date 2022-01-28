@@ -148,7 +148,8 @@ sub handle_create {
     #
     # Some types can't be supported so are just left alone to fail in
     # mysql, including: tsvector
-    
+
+    no warnings qw/uninitialized/;
     $line =~ s/ int_unsigned/ integer UNSIGNED/;
     $line =~ s/ smallint_unsigned/ smallint UNSIGNED/;
     $line =~ s/ bigint_unsigned/ bigint UNSIGNED/;
@@ -181,11 +182,13 @@ sub handle_create {
     $line =~ s/ DEFAULT nextval\(.*\)/ /; 
     $line =~ s/::.*,/,/; # strip extra type info
     $line =~ s/::[^,]*$//; # strip extra type info
-    $line =~ s/ timestamp with time zone/ timestamp/;
-    $line =~ s/ timestamp without time zone/ timestamp/;
-    $line =~ s/ timestamp DEFAULT '(.*)(\+|\-).*'/ timestamp DEFAULT '%1'/; # strip timezone in defaults
-    $line =~ s/ timestamp DEFAULT now()/ timestamp DEFAULT CURRENT_TIMESTAMP/;
-    $line =~ s/ timestamp( NOT NULL)?(,|$)/ timestamp DEFAULT 0${1}${2}/;
+    $line =~ s/ time(\([0-6]\))? with time zone/ time$1/;
+    $line =~ s/ time(\([0-6]\))? without time zone/ time$1/;
+    $line =~ s/ timestamp(\([0-6]\))? with time zone/ timestamp$1/;
+    $line =~ s/ timestamp(\([0-6]\))? without time zone/ timestamp$1/;
+    $line =~ s/ timestamp(\([0-6]\))? DEFAULT '(.*)(\+|\-).*'/ timestamp$1 DEFAULT '%1'/; # strip timezone in defaults
+    $line =~ s/ timestamp(\([0-6]\))? DEFAULT now()/ timestamp$1 DEFAULT CURRENT_TIMESTAMP/;
+    $line =~ s/ timestamp NOT NULL/ timestamp DEFAULT 0${1}${2}/;
     $line =~ s/ longtext DEFAULT [^,]*( NOT NULL)?/ longtext $1/; # text types can't have defaults in mysql
     $line =~ s/ DEFAULT .*\(\)//; # strip function defaults
     # lots of these function translations are missing
