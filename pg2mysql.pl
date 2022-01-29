@@ -189,6 +189,10 @@ sub handle_create {
     $line =~ s/ timestamp(\([0-6]\))? DEFAULT '(.*)(\+|\-).*'/ timestamp$1 DEFAULT '%1'/; # strip timezone in defaults
     $line =~ s/ timestamp(\([0-6]\))? DEFAULT now()/ timestamp$1 DEFAULT CURRENT_TIMESTAMP/;
     $line =~ s/ timestamp NOT NULL/ timestamp DEFAULT 0${1}${2}/;
+    $line =~ s/ cidr/ varchar\(32\)/;
+    $line =~ s/ inet/ varchar\(32\)/;
+    $line =~ s/ macaddr/ varchar\(32\)/;
+
     $line =~ s/ longtext DEFAULT [^,]*( NOT NULL)?/ longtext $1/; # text types can't have defaults in mysql
     $line =~ s/ DEFAULT .*\(\)//; # strip function defaults
     # lots of these function translations are missing
