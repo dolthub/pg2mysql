@@ -92,6 +92,11 @@ sub handle_line {
     my $line = shift || "";
     my $nextline = shift;
 
+    # Explicitly die when we encounter lines we can't handle
+    if ( $line =~ /CREATE TYPE / ) {
+	die "CREATE TYPE statemets not supported";
+    }
+    
     # Explicitly skipped statments need to be defined first.
     if ( $in_begin_end || $line =~ m/^\s*begin\s*$/i) {
         ($line, $in_begin_end, $skip) = handle_begin_end($line);
