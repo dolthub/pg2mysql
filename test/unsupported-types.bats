@@ -8,7 +8,7 @@ teardown() {
     teardown_common
 }
 
-@test "Network types MySQL does not support" {
+@test "network types" {
      pg2mysql.pl <<PGDUMP > out.sql
 --
 -- PostgreSQL database dump
@@ -79,6 +79,77 @@ PGDUMP
      [[ "$output" =~ "192.168.100.128/25" ]] || false
      [[ "$output" =~ "08:00:2b:01:02:03" ]] || false
 }
+
+@test "enum types" {
+    run pg2mysql.pl --strict <<PGDUMP
+--
+-- PostgreSQL database dump
+--
+
+-- Dumped from database version 14.1
+-- Dumped by pg_dump version 14.1
+
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+SET check_function_bodies = false;
+SET xmloption = content;
+SET client_min_messages = warning;
+SET row_security = off;
+
+--
+-- Name: mood; Type: TYPE; Schema: public; Owner: timsehn
+--
+
+CREATE TYPE public.mood AS ENUM (
+    'sad',
+    'ok',
+    'happy'
+);
+
+
+ALTER TYPE public.mood OWNER TO timsehn;
+
+SET default_tablespace = '';
+
+SET default_table_access_method = heap;
+
+--
+-- Name: enum_type; Type: TABLE; Schema: public; Owner: timsehn
+--
+
+CREATE TABLE public.enum_type (
+    pk integer NOT NULL,
+    c1 public.mood
+);
+
+
+ALTER TABLE public.enum_type OWNER TO timsehn;
+
+--
+-- Data for Name: enum_type; Type: TABLE DATA; Schema: public; Owner: timsehn
+--
+
+
+
+--
+-- Name: enum_type enum_type_pkey; Type: CONSTRAINT; Schema: public; Owner: timsehn
+--
+
+ALTER TABLE ONLY public.enum_type
+    ADD CONSTRAINT enum_type_pkey PRIMARY KEY (pk);
+
+--
+-- PostgreSQL database dump complete
+--
+PGDUMP
+
+    [ $status -ne 0 ]
+    [[ "$output" =~ "CREATE TYPE statements not supported" ]] || false
+}    
 
 @test "money type" {
     pg2mysql.pl <<PGDUMP > out.sql
