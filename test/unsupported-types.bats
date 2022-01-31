@@ -149,6 +149,6 @@ ALTER TABLE ONLY public.enum_type
 --
 PGDUMP
     [ $status -ne 0 ]
-    [[ "$output" =~ "CREATE TYPE statemets not supported" ]] || false
+    [[ "$output" =~ "CREATE TYPE statements not supported" ]] || false
     
 }

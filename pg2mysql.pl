@@ -97,7 +97,7 @@ sub handle_line {
     # Explicitly die when we encounter lines we can't handle
     if ( $strict ) {
 	if ( $line =~ /CREATE TYPE / ) {
-	    die "CREATE TYPE statemets not supported";
+	    die "CREATE TYPE statements not supported";
 	}
     }
     
