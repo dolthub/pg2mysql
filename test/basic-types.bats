@@ -604,3 +604,65 @@ PGDUMP
     [[ "$output" =~ "blob" ]] || false
     [[ ! "$output" =~ "bytea" ]] || false
 }
+
+@test "Boolean type" {
+    pg2mysql.pl <<PGDUMP > out.sql
+--
+-- PostgreSQL database dump
+--
+
+-- Dumped from database version 14.1
+-- Dumped by pg_dump version 14.1
+
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+SET check_function_bodies = false;
+SET xmloption = content;
+SET client_min_messages = warning;
+SET row_security = off;
+
+SET default_tablespace = '';
+
+SET default_table_access_method = heap;
+
+--
+-- Name: boolean_type; Type: TABLE; Schema: public; Owner: timsehn
+--
+
+CREATE TABLE public.boolean_type (
+    pk integer NOT NULL,
+    c1 boolean
+);
+
+
+ALTER TABLE public.boolean_type OWNER TO timsehn;
+
+--
+-- Data for Name: boolean_type; Type: TABLE DATA; Schema: public; Owner: timsehn
+--
+
+
+
+--
+-- Name: boolean_type boolean_type_pkey; Type: CONSTRAINT; Schema: public; Owner: timsehn
+--
+
+ALTER TABLE ONLY public.boolean_type
+    ADD CONSTRAINT boolean_type_pkey PRIMARY KEY (pk);
+
+
+--
+-- PostgreSQL database dump complete
+--
+PGDUMP
+
+    dolt sql < out.sql
+
+    run dolt sql -q "use public; show create table boolean_type;"
+    [ $status -eq 0 ]
+    [[ "$output" =~ "tinyint" ]] || false
+}
