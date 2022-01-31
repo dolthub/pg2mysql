@@ -541,3 +541,66 @@ PGDUMP
     [[ "$output" =~ "json" ]] || false
     [[ ! "$output" =~ "jsonb" ]] || false
 }
+
+@test "Binary types: bytea" {
+    pg2mysql.pl <<PGDUMP > out.sql
+--
+-- PostgreSQL database dump
+--
+
+-- Dumped from database version 14.1
+-- Dumped by pg_dump version 14.1
+
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+SET check_function_bodies = false;
+SET xmloption = content;
+SET client_min_messages = warning;
+SET row_security = off;
+
+SET default_tablespace = '';
+
+SET default_table_access_method = heap;
+
+--
+-- Name: binary_types; Type: TABLE; Schema: public; Owner: timsehn
+--
+
+CREATE TABLE public.binary_types (
+    pk integer NOT NULL,
+    c1 bytea
+);
+
+
+ALTER TABLE public.binary_types OWNER TO timsehn;
+
+--
+-- Data for Name: binary_types; Type: TABLE DATA; Schema: public; Owner: timsehn
+--
+
+
+
+--
+-- Name: binary_types binary_types_pkey; Type: CONSTRAINT; Schema: public; Owner: timsehn
+--
+
+ALTER TABLE ONLY public.binary_types
+    ADD CONSTRAINT binary_types_pkey PRIMARY KEY (pk);
+
+
+--
+-- PostgreSQL database dump complete
+--
+PGDUMP
+
+    dolt sql < out.sql
+
+    run dolt sql -q "use public; show create table binary_types;"
+    [ $status -eq 0 ]
+    [[ "$output" =~ "blob" ]] || false
+    [[ ! "$output" =~ "bytea" ]] || false
+}
