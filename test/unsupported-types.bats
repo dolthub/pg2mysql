@@ -81,7 +81,7 @@ PGDUMP
 }
 
 @test "enum types" {
-    run pg2mysql.pl <<PGDUMP
+    run pg2mysql.pl --strict <<PGDUMP
 --
 -- PostgreSQL database dump
 --

@@ -42,9 +42,11 @@ use Getopt::Long;
 
 my @skip_tables;
 my $insert_ignore;
+my $strict;
 GetOptions (
     "skip=s" => \@skip_tables,
     "insert_ignore" => \$insert_ignore,
+    "strict" => \$strict
     );
 
 $| = 1;
@@ -93,8 +95,10 @@ sub handle_line {
     my $nextline = shift;
 
     # Explicitly die when we encounter lines we can't handle
-    if ( $line =~ /CREATE TYPE / ) {
-	die "CREATE TYPE statemets not supported";
+    if ( $strict ) {
+	if ( $line =~ /CREATE TYPE / ) {
+	    die "CREATE TYPE statemets not supported";
+	}
     }
     
     # Explicitly skipped statments need to be defined first.
