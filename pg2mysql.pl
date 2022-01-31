@@ -189,9 +189,12 @@ sub handle_create {
     $line =~ s/ timestamp(\([0-6]\))? DEFAULT '(.*)(\+|\-).*'/ timestamp$1 DEFAULT '%1'/; # strip timezone in defaults
     $line =~ s/ timestamp(\([0-6]\))? DEFAULT now()/ timestamp$1 DEFAULT CURRENT_TIMESTAMP/;
     $line =~ s/ timestamp NOT NULL/ timestamp DEFAULT 0${1}${2}/;
+
     $line =~ s/ cidr/ varchar\(32\)/;
     $line =~ s/ inet/ varchar\(32\)/;
     $line =~ s/ macaddr/ varchar\(32\)/;
+
+    $line =~ s/ money/ varchar\(32\)/;
 
     $line =~ s/ longtext DEFAULT [^,]*( NOT NULL)?/ longtext $1/; # text types can't have defaults in mysql
     $line =~ s/ DEFAULT .*\(\)//; # strip function defaults
@@ -346,8 +349,8 @@ sub handle_insert {
 
         # Escape any field names, some of which will not parse in MySQL (e.g. `key`)
 
-        $line =~ /^\s*INSERT INTO (\S+)\s*\(([^\)]+)\)/;
-        my @fields = split /\s*,\s*/, $2;
+        $line =~ /^\s*INSERT INTO (\S+)\s*\(([^\)]+)\)/i;
+        my @fields = split /\s*,\s*/, $2 if $2;
         my $escaped = join(',', map { backtick($_) } @fields);
         
         $line =~ s/^\s*INSERT INTO (\S+)\s*\(([^\)]+)\)/INSERT INTO $1 \($escaped\)/;
@@ -378,7 +381,8 @@ sub handle_insert {
         # lines that end in );. To do slightly better, we also keep
         # track of how many single quotes we've seen
 
-        warn "line $. ended, num quotes is $quotes and in_insert is $in_insert\n";
+	warn "line $. ended, num quotes is $quotes and in_insert is $in_insert\n";
+
         if ( (!$in_insert && $quotes % 2 == 0)
              || ($in_insert && $quotes % 2 == 1) ) {
             warn "marking statement ended";

@@ -8,7 +8,7 @@ teardown() {
     teardown_common
 }
 
-@test "Network type MySQL does not support" {
+@test "Network types MySQL does not support" {
      pg2mysql.pl <<PGDUMP > out.sql
 --
 -- PostgreSQL database dump
@@ -80,3 +80,74 @@ PGDUMP
      [[ "$output" =~ "08:00:2b:01:02:03" ]] || false
 }
 
+@test "money type" {
+    pg2mysql.pl <<PGDUMP > out.sql
+--
+-- PostgreSQL database dump
+--
+
+-- Dumped from database version 14.1
+-- Dumped by pg_dump version 14.1
+
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+SET check_function_bodies = false;
+SET xmloption = content;
+SET client_min_messages = warning;
+SET row_security = off;
+
+SET default_tablespace = '';
+
+SET default_table_access_method = heap;
+
+--
+-- Name: money_type; Type: TABLE; Schema: public; Owner: timsehn
+--
+
+CREATE TABLE public.money_type (
+    pk integer NOT NULL,
+    c1 money
+);
+
+
+ALTER TABLE public.money_type OWNER TO timsehn;
+
+--
+-- Data for Name: money_type; Type: TABLE DATA; Schema: public; Owner: timsehn
+--
+
+INSERT INTO public.money_type VALUES (0, '$100.00');
+INSERT INTO public.money_type VALUES (1, '$10.00');
+INSERT INTO public.money_type VALUES (2, '$1.00');
+
+
+--
+-- Name: money_type money_type_pkey; Type: CONSTRAINT; Schema: public; Owner: timsehn
+--
+
+ALTER TABLE ONLY public.money_type
+    ADD CONSTRAINT money_type_pkey PRIMARY KEY (pk);
+
+
+--
+-- PostgreSQL database dump complete
+--
+PGDUMP
+
+    dolt sql < out.sql
+
+     run dolt sql -q "use public; show create table money_type;"
+     [ $status -eq 0 ]
+     [[ "$output" =~ "varchar(32)" ]] || false
+     [[ ! "$output" =~ "c1 money" ]] || false
+
+     run dolt sql -q "use public; select * from money_type;"
+     [ $status -eq 0 ]
+     [[ "$output" =~ "$100.00" ]] || false
+     [[ "$output" =~ "$10.00" ]] || false
+     [[ "$output" =~ "$1.00" ]] || false
+}
