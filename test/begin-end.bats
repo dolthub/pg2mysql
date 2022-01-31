@@ -1,7 +1,7 @@
 load $BATS_TEST_DIRNAME/common.bash
 
 setup () {
-    setup_commom
+    setup_common
 }
 
 teardown() {
