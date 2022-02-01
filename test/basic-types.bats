@@ -336,9 +336,10 @@ ALTER TABLE ONLY public.serial_types
 --
 PGDUMP
 
-    skip "Dolt does not accept alters on tables like <db>.<table>"
+    skip "Dolt only allows auto increments on keys"
     dolt sql < out.sql
-
+    
+    
 }
 
 @test "Text types: text, char(1), varchar(1)" {
