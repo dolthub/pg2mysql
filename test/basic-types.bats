@@ -643,3 +643,70 @@ PGDUMP
     [ $status -eq 0 ]
     [[ "$output" =~ "autoincrement" ]] || false
 }
+
+@test "text array types" {
+    pg2mysql.pl <<PGDUMP > out.sql 
+--
+-- PostgreSQL database dump
+--
+
+-- Dumped from database version 14.1
+-- Dumped by pg_dump version 14.1
+
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+SET check_function_bodies = false;
+SET xmloption = content;
+SET client_min_messages = warning;
+SET row_security = off;
+
+SET default_tablespace = '';
+
+SET default_table_access_method = heap;
+
+--
+-- Name: test_array; Type: TABLE; Schema: public; Owner: timsehn
+--
+
+CREATE TABLE public.test_array (
+    pk integer NOT NULL,
+    c1 text[]
+);
+
+
+ALTER TABLE public.test_array OWNER TO timsehn;
+
+--
+-- Data for Name: test_array; Type: TABLE DATA; Schema: public; Owner: timsehn
+--
+
+INSERT INTO public.test_array VALUES (0, '{this,is,a,test}');
+
+
+--
+-- Name: test_array test_array_pkey; Type: CONSTRAINT; Schema: public; Owner: timsehn
+--
+
+ALTER TABLE ONLY public.test_array
+    ADD CONSTRAINT test_array_pkey PRIMARY KEY (pk);
+
+
+--
+-- PostgreSQL database dump complete
+--
+PGDUMP
+    
+    dolt sql < out.sql
+
+    run dolt sql -q "show create table public.test_array"
+    [ $status -eq 0 ]
+    [[ "$output" =~ "longtext" ]] || false
+
+    run	dolt sql -q "select* from public.test_array"
+    [ $status -eq 0 ]
+    [[ "$output" =~ "{this,is,a,test}" ]] || false
+}
