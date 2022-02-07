@@ -314,11 +314,9 @@ SET default_table_access_method = heap;
 CREATE TABLE public.time_types (
     pk integer NOT NULL,
     c1 timestamp without time zone,
-    c2 timestamp(1) without time zone,
-    c3 time without time zone,
-    c4 time(1) without time zone,
-    c5 date,
-    c6 timestamp with time zone
+    c2 time without time zone,
+    c3 date,
+    c4 timestamp with time zone
 );
 
 
@@ -343,15 +341,12 @@ ALTER TABLE ONLY public.time_types
 --
 PGDUMP
 
-    skip "Dolt does not support the length of time yet. But this is valid MySQL"
     dolt sql < out.sql
 
-    run dolt sql -q "use public; show create table text_types;"
+    run dolt sql -q "use public; show create table time_types;"
     [ $status -eq 0 ]
     [[ "$output" =~ "timestamp" ]] || false
-    [[ "$output" =~ "timestamp(1)" ]] || false
     [[ "$output" =~ "time" ]] || false
-    [[ "$output" =~ "time(1)" ]] || false
     [[ "$output" =~ "date" ]] || false
 }
 
