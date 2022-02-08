@@ -237,7 +237,6 @@ ALTER TABLE ONLY public.cities
 PGDUMP
 
     skip "Another example of chained schema failing"
-    skip "pg2mysql misses the CREATE UNIQUE INDEX line"
    
     dolt sql < out.sql
 

@@ -110,7 +110,7 @@ sub handle_line {
         ($line, $in_alter, $skip) = handle_alter($line, $nextline);
     } elsif ( $in_insert || $line =~ m/^\s*INSERT INTO/ ) {
         ($line, $in_insert, $skip) = handle_insert($line, $nextline);
-    } elsif ( $line =~ m/^\s*CREATE INDEX/ ) {
+    } elsif ( $line =~ m/^\s*CREATE (UNIQUE )?INDEX/ ) {
         ($line, $skip) = handle_create_index($line);
     } else {
         print_warning("$line");
@@ -409,9 +409,9 @@ sub handle_create_index {
     $line =~ s/ USING btree//;
     $line =~ s/ varchar_pattern_ops//;
     
-    $line =~ m/CREATE INDEX (\S+) ON (\S+)\s*\(([^\(]+)\)/;
-    if ( $2 ) {
-        if ( grep { $2 eq $_ } @skip_tables ) {
+    $line =~ m/CREATE (UNIQUE )?INDEX (\S+) ON (\S+)\s*\(([^\(]+)\)/;
+    if ( $3 ) {
+        if ( grep { $3 eq $_ } @skip_tables ) {
             return ($line, 1);
         }
     }
