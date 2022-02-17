@@ -135,10 +135,9 @@ PGDUMP
 
     dolt sql < out.sql
 
-    skip "Dolt does not apply indexes correctly"
     run dolt sql -q "show create table public.index_test";
     [ $status -eq 0 ]
-    [[ $output =~ INDEX ]] || false
+    [[ $output =~ KEY ]] || false
 }
 
 @test "Foreign keys on a primary key column" {
@@ -232,8 +231,6 @@ PGDUMP
 
     dolt sql < out.sql
 
-    skip "Another example of chained schema failing"
-    
     run dolt sql -q "show create table public.cities";
     [ $status -eq 0 ]
     [[ $output =~ "FOREIGN KEY" ]] || false
@@ -334,8 +331,6 @@ ALTER TABLE ONLY public.cities
 --
 PGDUMP
 
-    skip "Another example of chained schema failing"
-   
     dolt sql < out.sql
 
     run dolt sql -q "show create table public.cities";

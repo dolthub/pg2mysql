@@ -633,10 +633,9 @@ ALTER TABLE ONLY public.serial_pk
 PGDUMP
     dolt sql < out.sql
 
-    skip "Dolt alters on non-used databases in jacked"
     run dolt sql -q "use public; show create table serial_pk;"
     [ $status -eq 0 ]
-    [[ "$output" =~ "autoincrement" ]] || false
+    [[ $output =~ "AUTO_INCREMENT" ]] || false
 }
 
 @test "text array types" {
