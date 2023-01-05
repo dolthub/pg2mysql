@@ -112,6 +112,8 @@ sub handle_line {
         ($line, $in_insert, $skip) = handle_insert($line, $nextline);
     } elsif ( $line =~ m/^\s*CREATE (UNIQUE )?INDEX/ ) {
         ($line, $skip) = handle_create_index($line);
+    } elsif ( $line =~ m/SELECT / ) {
+	($line) = handle_select($line);
     } else {
         print_warning("$line");
         return;
@@ -425,7 +427,8 @@ sub handle_begin_end {
     my $in_begin = shift;
     my $skip     = shift;
 
-    # Ignore everything in these blocks. The parser can get confused if there are INSERT statements in the functions.
+    # Ignore everything in these blocks. The parser can get confused if there
+    # are INSERT statements in the functions.
     $in_begin = 1;
     $skip = 1;
     if ( $line =~ /^\s*end.*;?\s*$/i ) {
@@ -433,6 +436,25 @@ sub handle_begin_end {
     }
 
     return ($line, $in_begin, $skip);
+}
+
+# Postgres will output a select if it needs to set an auto increment value
+# of the form:
+# SELECT pg_catalog.setval('public.my_table_id_seq', 33, true);
+# This must be parsed and converted to:
+# ALTER TABLE my_table AUTO_INCREMENT = value;
+sub handle_select {
+    my $line = shift;
+
+    return $line unless ($line =~ /.setval/);
+
+    my ($table, $value) = ("", "");
+    $line =~ /select \w+\.setval\('public\.(\w+)_id_seq',\s+(\d+)/i;
+    die "Can't parse select" unless ($1 and $2);
+    $table = $1;
+    $value = $2;
+    $line = "ALTER TABLE $table AUTO_INCREMENT = $value;";
+    return $line;
 }
 
 sub backtick {
