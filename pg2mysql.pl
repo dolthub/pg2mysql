@@ -446,7 +446,8 @@ sub handle_begin_end {
 sub handle_select {
     my $line = shift;
 
-    return $line unless ($line =~ /.setval/);
+    # Ignore all other select statements
+    return "" unless ($line =~ /.setval/);
 
     my ($table, $value) = ("", "");
     $line =~ /select \w+\.setval\('public\.(\w+)_id_seq',\s+(\d+)/i;
