@@ -104,6 +104,8 @@ sub handle_line {
     # Explicitly skipped statments need to be defined first.
     if ( $in_begin_end || $line =~ m/^\s*begin\s*$/i) {
         ($line, $in_begin_end, $skip) = handle_begin_end($line);
+    } elsif ( $line =~ m/SELECT / ) {
+	($line) = handle_select($line);
     } elsif ( $in_create || $line =~ m/^\s*CREATE TABLE/ ) {
         ($line, $in_create, $skip) = handle_create($line);
     } elsif ( $in_alter || $line =~ m/^\s*ALTER TABLE/ ) {
@@ -112,8 +114,6 @@ sub handle_line {
         ($line, $in_insert, $skip) = handle_insert($line, $nextline);
     } elsif ( $line =~ m/^\s*CREATE (UNIQUE )?INDEX/ ) {
         ($line, $skip) = handle_create_index($line);
-    } elsif ( $line =~ m/SELECT / ) {
-	($line) = handle_select($line);
     } else {
         print_warning("$line");
         return;
