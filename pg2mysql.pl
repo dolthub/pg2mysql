@@ -104,6 +104,8 @@ sub handle_line {
     # Explicitly skipped statments need to be defined first.
     if ( $in_begin_end || $line =~ m/^\s*begin\s*$/i) {
         ($line, $in_begin_end, $skip) = handle_begin_end($line);
+    } elsif ( $line =~ m/pg_catalog\.setval/ ) {
+	$line = handle_setval($line);
     } elsif ( $in_create || $line =~ m/^\s*CREATE TABLE/ ) {
         ($line, $in_create, $skip) = handle_create($line);
     } elsif ( $in_alter || $line =~ m/^\s*ALTER TABLE/ ) {
@@ -425,7 +427,8 @@ sub handle_begin_end {
     my $in_begin = shift;
     my $skip     = shift;
 
-    # Ignore everything in these blocks. The parser can get confused if there are INSERT statements in the functions.
+    # Ignore everything in these blocks. The parser can get confused if there
+    # are INSERT statements in the functions.
     $in_begin = 1;
     $skip = 1;
     if ( $line =~ /^\s*end.*;?\s*$/i ) {
@@ -433,6 +436,23 @@ sub handle_begin_end {
     }
 
     return ($line, $in_begin, $skip);
+}
+
+# Postgres will output a select if it needs to set an auto increment value
+# of the form:
+# SELECT pg_catalog.setval('public.my_table_id_seq', 33, true);
+# This must be parsed and converted to:
+# ALTER TABLE my_table AUTO_INCREMENT = value;
+sub handle_setval {
+    my $line = shift;
+
+    my ($table, $value) = ("", "");
+    $line =~ /select pg_catalog\.setval\('public\.(\w+)_id_seq',\s+(\d+)/i;
+    die "Can't parse select" unless ($1 and $2);
+    $table = $1;
+    $value = $2;
+    $line = "ALTER TABLE $table AUTO_INCREMENT = $value;";
+    return ($line);
 }
 
 sub backtick {
