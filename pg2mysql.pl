@@ -104,8 +104,8 @@ sub handle_line {
     # Explicitly skipped statments need to be defined first.
     if ( $in_begin_end || $line =~ m/^\s*begin\s*$/i) {
         ($line, $in_begin_end, $skip) = handle_begin_end($line);
-    } elsif ( $line =~ m/SELECT / ) {
-	($line) = handle_select($line);
+    } elsif ( $line =~ m/SELECT /i ) {
+	($line, $skip) = handle_select($line);
     } elsif ( $in_create || $line =~ m/^\s*CREATE TABLE/ ) {
         ($line, $in_create, $skip) = handle_create($line);
     } elsif ( $in_alter || $line =~ m/^\s*ALTER TABLE/ ) {
@@ -447,15 +447,15 @@ sub handle_select {
     my $line = shift;
 
     # Ignore all other select statements
-    return "" unless ($line =~ /.setval/);
-
+    return ($line, 1) unless ($line =~ /\.setval/);
+    
     my ($table, $value) = ("", "");
     $line =~ /select \w+\.setval\('public\.(\w+)_id_seq',\s+(\d+)/i;
     die "Can't parse select" unless ($1 and $2);
     $table = $1;
     $value = $2;
     $line = "ALTER TABLE $table AUTO_INCREMENT = $value;";
-    return $line;
+    return ($line, 0);
 }
 
 sub backtick {
