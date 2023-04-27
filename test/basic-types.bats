@@ -326,7 +326,7 @@ ALTER TABLE public.time_types OWNER TO timsehn;
 -- Data for Name: time_types; Type: TABLE DATA; Schema: public; Owner: timsehn
 --
 
-
+INSERT INTO public.time_types VALUES (0, '2023-04-28 11:27:31.597687', '11:27:31.597687', '2023-04-28', '2023-04-28 11:27:31.597687-07');
 
 --
 -- Name: time_types time_types_pkey; Type: CONSTRAINT; Schema: public; Owner: timsehn
@@ -348,6 +348,10 @@ PGDUMP
     [[ "$output" =~ "timestamp" ]] || false
     [[ "$output" =~ "time" ]] || false
     [[ "$output" =~ "date" ]] || false
+
+    dolt sql -q "use public; select * from time_types;"
+    [ $status -eq 0 ]
+    ! [[ "$output" =~ "597687" ]] || false
 }
 
 @test "JSON types: json, jsonb" {

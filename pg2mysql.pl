@@ -371,8 +371,10 @@ sub handle_insert {
         }
     }
 
+    # timestamp literal strings need timezones stripped
     # 2020-06-08 11:27:31.597687-07
-    $line =~ s/'(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}.\d{6})(-|\+)\d{2}'/'$1'/g; # timestamp literal strings need timezones stripped
+    $line =~ s/'(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{6})(-|\+)\d{2}'/'$1'/g;
+    
     $line =~ s/\\([nt])/\\\\$1/g; # tab and newline literals, need an additional escape (for JSON strings)
 
     # Change hex characters to proper format for MySQL
