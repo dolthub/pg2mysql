@@ -450,7 +450,7 @@ sub handle_setval {
     my $line = shift;
 
     my ($table, $value) = ("", "");
-    $line =~ /select pg_catalog\.setval\('public\.(\w+)_id_seq',\s+(\d+)/i;
+    $line =~ /select pg_catalog\.setval\('(public\.\w+)_\w+_seq',\s+(\d+)/i;
     die "Can't parse select" unless ($1 and $2);
     $table = $1;
     $value = $2;
