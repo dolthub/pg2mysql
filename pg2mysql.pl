@@ -119,6 +119,10 @@ sub handle_line {
         return;
     }
 
+    # Post process
+    # Change hex characters to proper format for MySQL
+    $line =~ s/'\''\\x(\S*)'\''/X'\''$1'\''/g
+    
     print "$line\n" unless $skip;
 }
 
