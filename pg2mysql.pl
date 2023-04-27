@@ -121,7 +121,10 @@ sub handle_line {
 
     # Post process
     # Change hex characters to proper format for MySQL
-    $line =~ s/'\''\\x(\S*)'\''/X'\''$1'\''/g
+    $line =~ s/'\''\\x(\S*)'\''/X'\''$1'\''/g;
+
+    # Fix Postgres datetimes
+    # $line =~ s/\+[[:digit:]]\{2\}//gi;
     
     print "$line\n" unless $skip;
 }
