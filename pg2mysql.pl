@@ -378,7 +378,7 @@ sub handle_insert {
     $line =~ s/\\([nt])/\\\\$1/g; # tab and newline literals, need an additional escape (for JSON strings)
 
     # Change hex characters to proper format for MySQL
-    $line =~ s/'\''\\x(\S*)'\''/X'\''$1'\''/g;
+    $line =~ s/'\\x(\S*)'/X'$1'/g;
     
     # Count single quotes
     my $quotes = () = $line =~ m/'/g;
