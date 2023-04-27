@@ -15,5 +15,5 @@ PGDUMP
 
      echo $output
      [ $status -eq 0 ] 
-     [[ "$output" =~ "ALTER TABLE my_table AUTO_INCREMENT = 33;" ]] || false
+     [[ "$output" =~ "ALTER TABLE public.my_table AUTO_INCREMENT = 33;" ]] || false
 }
