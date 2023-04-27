@@ -119,10 +119,6 @@ sub handle_line {
         return;
     }
 
-    # Post process
-    # Change hex characters to proper format for MySQL
-    $line =~ s/'\''\\x(\S*)'\''/X'\''$1'\''/g;
-    
     print "$line\n" unless $skip;
 }
 
@@ -379,6 +375,9 @@ sub handle_insert {
     $line =~ s/'(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}.\d{6})(-|\+)\d{2}'/'$1'/g; # timestamp literal strings need timezones stripped
     $line =~ s/\\([nt])/\\\\$1/g; # tab and newline literals, need an additional escape (for JSON strings)
 
+    # Change hex characters to proper format for MySQL
+    $line =~ s/'\''\\x(\S*)'\''/X'\''$1'\''/g;
+    
     # Count single quotes
     my $quotes = () = $line =~ m/'/g;
     
