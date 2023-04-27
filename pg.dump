@@ -1,0 +1,13 @@
+CREATE TABLE public.binary_types (
+    pk integer NOT NULL,
+    c1 bytea
+);
+
+
+ALTER TABLE public.binary_types OWNER TO timsehn;
+
+--
+-- Data for Name: binary_types; Type: TABLE DATA; Schema: public; Owner: timsehn
+--
+
+INSERT INTO public.binary_types VALUES (0, '\x6161616161');

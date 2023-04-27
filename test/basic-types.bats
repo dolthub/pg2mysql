@@ -457,7 +457,7 @@ ALTER TABLE public.binary_types OWNER TO timsehn;
 -- Data for Name: binary_types; Type: TABLE DATA; Schema: public; Owner: timsehn
 --
 
-
+INSERT INTO public.binary_types VALUES (0, '\x6161616161');
 
 --
 -- Name: binary_types binary_types_pkey; Type: CONSTRAINT; Schema: public; Owner: timsehn
@@ -478,6 +478,11 @@ PGDUMP
     [ $status -eq 0 ]
     [[ "$output" =~ "blob" ]] || false
     [[ ! "$output" =~ "bytea" ]] || false
+
+    run dolt sql -q "use public; select c1 from binary_types"
+    [ $status -eq 0 ]
+    [[ "$output" =~ "aaaaa" ]] || false
+    [[ ! "$output" =~ "x6161616161" ]] || false
 }
 
 @test "Boolean type" {
