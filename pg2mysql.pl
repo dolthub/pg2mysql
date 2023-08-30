@@ -375,7 +375,7 @@ sub handle_insert {
     # 2020-06-08 11:27:31.597687-07
     $line =~ s/'(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{6})(-|\+)\d{2}'/'$1'/g;
     
-    $line =~ s/\\([nt])/\\\\$1/g; # tab and newline literals, need an additional escape (for JSON strings)
+    $line =~ s/\\([rnt])/\\\\$1/g; # tab, carriage return and newline literals, need an additional escape (for JSON strings)
 
     # Change hex characters to proper format for MySQL
     $line =~ s/'\\x(\S*)'/X'$1'/g;
