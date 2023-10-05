@@ -62,6 +62,7 @@ my $in_begin_end = 0;
 my $in_create    = 0;
 my $in_alter     = 0;
 my $in_insert    = 0;
+my $in_copy      = 0;
 
 my $skip         = 0;
 my $debug        = 0;
@@ -112,6 +113,8 @@ sub handle_line {
         ($line, $in_alter, $skip) = handle_alter($line, $nextline);
     } elsif ( $in_insert || $line =~ m/^\s*INSERT INTO/ ) {
         ($line, $in_insert, $skip) = handle_insert($line, $nextline);
+    } elsif ( $in_copy || $line =~ m/^\s*COPY/ ) {
+        ($line, $in_copy, $skip) = handle_copy($line, $nextline);
     } elsif ( $line =~ m/^\s*CREATE (UNIQUE )?INDEX/ ) {
         ($line, $skip) = handle_create_index($line);
     } else {
@@ -390,7 +393,8 @@ sub handle_insert {
     # 2020-06-08 11:27:31.597687-07
     $line =~ s/'(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{6})(-|\+)\d{2}'/'$1'/g;
 
-    $line =~ s/\\([rnt])/\\\\$1/g; # tab, carriage return and newline literals, need an additional escape (for JSON strings)
+    # tab, carriage return and newline literals, need an additional escape (for JSON strings)
+    $line =~ s/\\([rnt])/\\\\$1/g;
 
     # Change hex characters to proper format for MySQL
     $line =~ s/'\\x(\S*)'/X'$1'/g;
@@ -403,7 +407,108 @@ sub handle_insert {
     # Same thing is true in JSON strings (double quoted).
     # No idea why pgdump behaves this way, seems like a bug.
     $line =~ s/\\''/\\\\''/g;
-    $line =~ s/\\"/\\\\"/g; # escaped double quote characters
+    $line =~ s/\\"/\\\\"/g;
+
+    my $statement_continues = 1;
+    if ( $line =~ m/\);$/ ) {
+        # the above is a reasonable heuristic for a line not
+        # continuing but isn't fool proof, and can fail on long text
+        # lines that end in );. To do slightly better, we also keep
+        # track of how many single quotes we've seen
+
+        warn "line $. ended, num quotes is $quotes and in_insert is $in_insert\n";
+
+        if ( (!$in_insert && $quotes % 2 == 0)
+             || ($in_insert && $quotes % 2 == 1) ) {
+            warn "marking statement ended";
+            $statement_continues = 0;
+        }
+    }
+
+    return ($line, $statement_continues, $skip);
+}
+
+sub handle_copy {
+    my $line = shift;
+    my $nextline = shift;
+
+    if ( $line =~ m/^\s*COPY (\S+)/ ) {
+        if ( grep { $1 eq $_ } @skip_tables ) {
+            print_warning("skipping table $1");
+            $skip = 1;
+        } else {
+            $skip = 0;
+        }
+
+        # Escape any field names, some of which will not parse in MySQL (e.g. `key`)
+
+        $line =~ /^\s*COPY (\S+)\s*\(([^\)]+)\)/i;
+        my @fields = split /\s*,\s*/, $2 if $2;
+        my $escaped = join ',', map { backtick($_) } @fields;
+
+        $line =~ s/^\s*COPY (\S+)\s*\(([^\)]+)\)/INSERT INTO $1 \($escaped\)/;
+
+        $line =~ s/\s*FROM stdin;/ VALUES/;
+
+        # insert is empty, so skip but keep statement
+        if ( $nextline =~ m/^\\\.$/ ) {
+            $line = "-- " . $line . " ()";
+        }
+
+        if ( $insert_ignore ) {
+            $line =~ s/^\s*COPY /INSERT IGNORE INTO /;
+        }
+    }
+
+    # Replace quotes with backtick
+    $line =~ s/\'/’/g;
+
+    # Line ends with tab, add \N to end of line
+    if ( $line =~ m/\t$/ ) {
+        $line = $line . "\\N";
+    }
+
+    my @fields = split /\t/, $line;
+    my $escaped = join ',', map { quote($_) } @fields;
+
+    # Wrap & escape values in parenthesis for tabs, words and digits
+    $line =~ s/(.*\t.*)/($escaped),/;
+    $line =~ s/^(\w+)$/($escaped),/;
+    $line =~ s/^(\d+)$/($escaped),/;
+
+    # timestamp literal strings need timezones stripped
+    # 2020-06-08 11:27:31.597687-07
+    $line =~ s/'(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{6})(-|\+)\d{2}'/'$1'/g;
+
+    # tab, carriage return and newline literals, need an additional escape (for JSON strings)
+    # $line =~ s/\\([rnt])/\\\\$1/g;
+
+    # Change hex characters to proper format for MySQL
+    $line =~ s/'\\x(\S*)'/X'$1'/g;
+
+    # Fix boolean values
+    $line =~ s/'t'/1/g;
+    $line =~ s/'f'/0/g;
+    # Fix null values
+    $line =~ s/'\\N'/null/g;
+
+    # Count single quotes
+    my $quotes = () = $line =~ m/'/g;
+
+    # Escaped quote characters, this is an odd feature of pgdump.
+    # An escaped single quote escapes, so does '', but if you use both (\'') they cancel each other out.
+    # Same thing is true in JSON strings (double quoted).
+    # No idea why pgdump behaves this way, seems like a bug.
+    $line =~ s/\\''/\\\\''/g;
+    $line =~ s/\\"/\\\\"/g;
+
+    # nextline is end copy symbol add semicolon
+    if ( $nextline =~ m/^\\\.$/ ) {
+        $line =~ s/,$/;\n/;
+    }
+
+    # Replace \. with new line
+    $line =~ s/\\\./\n/g;
 
     my $statement_continues = 1;
     if ( $line =~ m/\);$/ ) {
@@ -478,6 +583,11 @@ sub handle_setval {
 sub backtick {
     my $s = shift;
     return '`' . $s . '`';
+}
+
+sub quote {
+    my $s = shift;
+    return "'" . $s . "'";
 }
 
 sub ids {
