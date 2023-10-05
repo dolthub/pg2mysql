@@ -119,6 +119,9 @@ sub handle_line {
         return;
     }
 
+    # Very special case: key is a reserved word in MySQL, rename all
+    $line =~ s/`key`/`index`/g;
+
     print "$line\n" unless $skip;
 }
 
