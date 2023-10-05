@@ -174,7 +174,7 @@ sub handle_create {
     $line =~ s/ int_unsigned/ integer UNSIGNED/;
     $line =~ s/ smallint_unsigned/ smallint UNSIGNED/;
     $line =~ s/ bigint_unsigned/ bigint UNSIGNED/;
-    $line =~ s/ serial / integer auto_increment /;
+    $line =~ s/ serial/ integer auto_increment/;
     $line =~ s/ uuid/ varchar(36)/;
     $line =~ s/ bytea/ BLOB/;
     $line =~ s/ boolean/ bool/;
