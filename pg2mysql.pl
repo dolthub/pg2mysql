@@ -215,6 +215,7 @@ sub handle_create {
     $line =~ s/ inet/ varchar\(32\)/;
     $line =~ s/ macaddr/ varchar\(32\)/;
     $line =~ s/ money/ varchar\(32\)/;
+    $line =~ s/ interval/ varchar\(64\)/;
 
     $line =~ s/ longtext DEFAULT [^,]*( NOT NULL)?/ longtext $1/; # text types can't have defaults in mysql
     $line =~ s/ DEFAULT .*\(\)//; # strip function defaults
