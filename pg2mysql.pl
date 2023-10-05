@@ -29,7 +29,7 @@
 #
 # It has a lot of limitations and there are surely bugs. If you find
 # some, tell us. But these are the things we know about:
-# 
+#
 # * Many types badly / not supported
 # * Will convert a character varying type to longtext if no length is
 #   specified, which means MySQL won't be able to make it a key
@@ -74,7 +74,7 @@ my $nextline;
 
 while (<>) {
     $line = $nextline;
-        
+
     chomp;
     $nextline = $_;
 
@@ -96,16 +96,16 @@ sub handle_line {
 
     # Explicitly die when we encounter lines we can't handle
     if ( $strict ) {
-	if ( $line =~ /CREATE TYPE / ) {
-	    die "CREATE TYPE statements not supported";
-	}
+        if ( $line =~ /CREATE TYPE / ) {
+            die "CREATE TYPE statements not supported";
+        }
     }
-    
+
     # Explicitly skipped statments need to be defined first.
     if ( $in_begin_end || $line =~ m/^\s*begin\s*$/i) {
         ($line, $in_begin_end, $skip) = handle_begin_end($line);
     } elsif ( $line =~ m/pg_catalog\.setval/ ) {
-	$line = handle_setval($line);
+        $line = handle_setval($line);
     } elsif ( $in_create || $line =~ m/^\s*CREATE TABLE/ ) {
         ($line, $in_create, $skip) = handle_create($line);
     } elsif ( $in_alter || $line =~ m/^\s*ALTER TABLE/ ) {
@@ -135,7 +135,7 @@ sub handle_create {
             print "CREATE DATABASE $schema;\n";
             $dbs{$schema} = 1;
         }
-        
+
         if ( grep { $1 eq $_ } @skip_tables ) {
             print_warning("skipping table $1");
             $skip = 1;
@@ -143,16 +143,16 @@ sub handle_create {
             $skip = 0;
         }
     }
-    
+
     debug_print("input line is $line\n");
 
     if ( $line =~ m/\s*CONSTRAINT .*? CHECK/ ) {
         $line = handle_check($line);
         return ($line, 1, 0);
     }
-    
+
     # Some notes on these conversions:
-    # 
+    #
     # Array types are not supported in mysql, but for arrays of
     # strings, we can fake it because the insert statement looks like
     # '{value1,value2}'
@@ -190,7 +190,7 @@ sub handle_create {
     # auto_increment here (only via ALTER TABLE statement). Not clear
     # what pg_dump setting does it this way instead of after the data
     # section.
-    $line =~ s/ DEFAULT nextval\(.*\)/ /; 
+    $line =~ s/ DEFAULT nextval\(.*\)/ /;
     $line =~ s/::.*,/,/; # strip extra type info
     $line =~ s/::[^,]*$//; # strip extra type info
     $line =~ s/ time(\([0-6]\))? with time zone/ time$1/;
@@ -204,7 +204,6 @@ sub handle_create {
     $line =~ s/ cidr/ varchar\(32\)/;
     $line =~ s/ inet/ varchar\(32\)/;
     $line =~ s/ macaddr/ varchar\(32\)/;
-
     $line =~ s/ money/ varchar\(32\)/;
 
     $line =~ s/ longtext DEFAULT [^,]*( NOT NULL)?/ longtext $1/; # text types can't have defaults in mysql
@@ -216,7 +215,7 @@ sub handle_create {
     $line =~ s/ \S*\.citext/ text/;
 
     my $field_def = ( $line !~ m/^CREATE/ && $line !~ m/^\s*CONSTRAINT/ && $line !~ m/\s*PRIMARY KEY/ && $line !~ m/^\s*\);/ );
-    
+
     # backtick quote any field name as necessary
     # TODO: backtick field names in constraints as well
     if ( $field_def && $line !~ m/^\s*`(.*?)` / ) {
@@ -224,14 +223,14 @@ sub handle_create {
         my $col = $1;
         $line =~ s/$col/`$col`/;
     }
-            
+
     my $statement_continues = 1;
     if ( $line =~ m/\);$/ ) {
         $statement_continues = 0;
     }
 
     debug_print("in create, cont = $statement_continues\n");
-    
+
     return ($line, $statement_continues, $skip);
 }
 
@@ -263,7 +262,7 @@ sub handle_check {
         $line =~ s/\)(,)?\s*$/$1/;
         $right_parens -= 1;
     }
-    
+
     return $line;
 }
 
@@ -274,7 +273,7 @@ sub handle_alter {
     if ( $line =~ m/ALTER TABLE .* OWNER TO/ ) {
         return ($line, 0, 1);
     }
-    
+
     $line =~ s/ALTER TABLE ONLY/ALTER TABLE/;
     $line =~ s/DEFERRABLE INITIALLY DEFERRED//;
     $line =~ s/USING \S+;/;/;
@@ -295,7 +294,7 @@ sub handle_alter {
             $skip = 1;
         }
     }
-    
+
     debug_print("alter line is $line\n");
 
     # Escape field names in unique and primary key constraints
@@ -312,7 +311,7 @@ sub handle_alter {
         my $joined = join ",", @quoted;
         $line = "ADD CONSTRAINT $1 PRIMARY KEY ($joined);";
     }
-    
+
     my $statement_continues = 1;
     if ( $line =~ m/\;$/ ) {
         $statement_continues = 0;
@@ -332,7 +331,7 @@ sub handle_alter {
     # the table. So instead, when we see this pattern, we defer
     # auto_increment changes until after the primary key changes. This
     # also makes assumptions about the type of a primary key column
-    # which may not be accurate.  
+    # which may not be accurate.
     #
     # ALTER TABLE public.account_emailaddress ALTER COLUMN id SET DEFAULT nextval
 
@@ -342,7 +341,7 @@ sub handle_alter {
             $line = "";
         }
     }
-    
+
     return ($line, $statement_continues, $skip);
 }
 
@@ -362,8 +361,8 @@ sub handle_insert {
 
         $line =~ /^\s*INSERT INTO (\S+)\s*\(([^\)]+)\)/i;
         my @fields = split /\s*,\s*/, $2 if $2;
-        my $escaped = join(',', map { backtick($_) } @fields);
-        
+        my $escaped = join ',', map { backtick($_) } @fields;
+
         $line =~ s/^\s*INSERT INTO (\S+)\s*\(([^\)]+)\)/INSERT INTO $1 \($escaped\)/;
 
         if ( $insert_ignore ) {
@@ -374,20 +373,20 @@ sub handle_insert {
     # timestamp literal strings need timezones stripped
     # 2020-06-08 11:27:31.597687-07
     $line =~ s/'(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{6})(-|\+)\d{2}'/'$1'/g;
-    
+
     $line =~ s/\\([rnt])/\\\\$1/g; # tab, carriage return and newline literals, need an additional escape (for JSON strings)
 
     # Change hex characters to proper format for MySQL
     $line =~ s/'\\x(\S*)'/X'$1'/g;
-    
+
     # Count single quotes
     my $quotes = () = $line =~ m/'/g;
-    
+
     # Escaped quote characters, this is an odd feature of pgdump.
     # An escaped single quote escapes, so does '', but if you use both (\'') they cancel each other out.
     # Same thing is true in JSON strings (double quoted).
     # No idea why pgdump behaves this way, seems like a bug.
-    $line =~ s/\\''/\\\\''/g; 
+    $line =~ s/\\''/\\\\''/g;
     $line =~ s/\\"/\\\\"/g; # escaped double quote characters
 
     my $statement_continues = 1;
@@ -397,7 +396,7 @@ sub handle_insert {
         # lines that end in );. To do slightly better, we also keep
         # track of how many single quotes we've seen
 
-	warn "line $. ended, num quotes is $quotes and in_insert is $in_insert\n";
+        warn "line $. ended, num quotes is $quotes and in_insert is $in_insert\n";
 
         if ( (!$in_insert && $quotes % 2 == 0)
              || ($in_insert && $quotes % 2 == 1) ) {
@@ -415,7 +414,7 @@ sub handle_create_index {
     # CREATE INDEX account_emailaddress_email_03be32b2_like ON public.account_emailaddress USING btree (email varchar_pattern_ops);
     $line =~ s/ USING btree//;
     $line =~ s/ varchar_pattern_ops//;
-    
+
     $line =~ m/CREATE (UNIQUE )?INDEX (\S+) ON (\S+)\s*\(([^\(]+)\)/;
     if ( $3 ) {
         if ( grep { $3 eq $_ } @skip_tables ) {
@@ -464,7 +463,7 @@ sub backtick {
     my $s = shift;
     return '`' . $s . '`';
 }
-    
+
 sub ids {
     my $s = shift;
     $s =~ s/"/`/g;
@@ -474,7 +473,7 @@ sub ids {
 sub debug_print {
     my $msg = shift;
     print $msg if $debug;
-}   
+}
 
 sub print_warning {
     my $msg = shift;
