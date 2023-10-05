@@ -127,6 +127,13 @@ sub handle_line {
 
 sub handle_create {
     my $line = shift;
+    # special column names that can be replaced by a MySQL keyword
+    my @special = ('serial', 'uuid', 'text', 'character');
+
+    # temp rename special columns
+    foreach my $col ( @special ) {
+        $line =~ s/^\s{4}$col/    $col\_/g;
+    }
 
     if ( $line =~ m/^\s*CREATE TABLE (\S+)/ ) {
         # pgdump doesn't include "create database" statements for any
@@ -218,6 +225,11 @@ sub handle_create {
     $line =~ s/ \S*\.citext/ text/;
 
     my $field_def = ( $line !~ m/^CREATE/ && $line !~ m/^\s*CONSTRAINT/ && $line !~ m/\s*PRIMARY KEY/ && $line !~ m/^\s*\);/ );
+
+    # revert rename special columns
+    foreach my $col ( @special ) {
+        $line =~ s/^\s{4}$col\_/    $col/g;
+    }
 
     # backtick quote any field name as necessary
     # TODO: backtick field names in constraints as well
