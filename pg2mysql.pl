@@ -40,14 +40,16 @@ use strict;
 
 use Getopt::Long;
 
+my $db_name;
 my @skip_tables;
 my $insert_ignore;
 my $strict;
 GetOptions (
+    "db_name=s" => \$db_name,
     "skip=s" => \@skip_tables,
     "insert_ignore" => \$insert_ignore,
-    "strict" => \$strict
-    );
+    "strict" => \$strict,
+) or die("Error in command line arguments\n");
 
 $| = 1;
 
@@ -143,10 +145,15 @@ sub handle_create {
         # schemas being exported, so we need to emit them here the
         # first time we see a schema
         my ($schema, $table) = split /\./, $1;
+        $schema = $db_name if $db_name;
         if ( !$dbs{$schema} ) {
             print "DROP DATABASE IF EXISTS $schema;\n";
             print "CREATE DATABASE $schema;\n";
             $dbs{$schema} = 1;
+        }
+
+        if ( $db_name ) {
+            $line =~ s/public\./$db_name\./;
         }
 
         if ( grep { $1 eq $_ } @skip_tables ) {
@@ -256,6 +263,10 @@ sub handle_create {
 sub handle_check {
     my $line = shift;
 
+    if ( $db_name ) {
+        $line =~ s/public\./$db_name\./;
+    }
+
     # For check constraints, we can do a couple useful things:
     # 1) Strip off type conversions, which won't parse
     # 2) Convert ANY syntax into IN syntax (common check constraint in pg)
@@ -288,6 +299,10 @@ sub handle_check {
 sub handle_alter {
     my $line = shift;
     my $nextline = shift;
+
+    if ( $db_name ) {
+        $line =~ s/public\./$db_name\./;
+    }
 
     if ( $line =~ m/ALTER TABLE .* OWNER TO/ ) {
         return ($line, 0, 1);
@@ -376,6 +391,10 @@ sub handle_insert {
             $skip = 0;
         }
 
+        if ( $db_name ) {
+            $line =~ s/public\./$db_name\./;
+        }
+
         # Escape any field names, some of which will not parse in MySQL (e.g. `key`)
 
         $line =~ /^\s*INSERT INTO (\S+)\s*\(([^\)]+)\)/i;
@@ -438,6 +457,10 @@ sub handle_copy {
             $skip = 1;
         } else {
             $skip = 0;
+        }
+
+        if ( $db_name ) {
+            $line =~ s/public\./$db_name\./;
         }
 
         # Escape any field names, some of which will not parse in MySQL (e.g. `key`)
@@ -532,6 +555,10 @@ sub handle_copy {
 sub handle_create_index {
     my $line = shift;
 
+    if ( $db_name ) {
+        $line =~ s/public\./$db_name\./;
+    }
+
     # CREATE INDEX account_emailaddress_email_03be32b2_like ON public.account_emailaddress USING btree (email varchar_pattern_ops);
     $line =~ s/ USING btree//;
     $line =~ s/ varchar_pattern_ops//;
@@ -577,6 +604,11 @@ sub handle_setval {
     $table = $1;
     $value = $2;
     $line = "ALTER TABLE $table AUTO_INCREMENT = $value;";
+
+    if ( $db_name ) {
+        $line =~ s/public\./$db_name\./;
+    }
+
     return ($line);
 }
 
