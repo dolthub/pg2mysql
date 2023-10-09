@@ -137,7 +137,7 @@ sub handle_create {
 
     # temp rename special columns
     foreach my $col ( @special ) {
-        $line =~ s/^\s{4}$col/    $col\_/g;
+        $line =~ s/^\s*$col/    tmp\_$col/g;
     }
 
     if ( $line =~ m/^\s*CREATE TABLE (\S+)/ ) {
@@ -239,7 +239,7 @@ sub handle_create {
 
     # revert rename special columns
     foreach my $col ( @special ) {
-        $line =~ s/^\s{4}$col\_/    $col/g;
+        $line =~ s/^\s*tmp\_$col/    $col/g;
     }
 
     # backtick quote any field name as necessary
